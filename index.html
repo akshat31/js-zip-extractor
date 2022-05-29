@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.js"
+      integrity="sha512-djAJLNukP3WdWmwP/Y05w99aCX6u1jInpshdwiUKbXcQ9y/8BpMtsPsVrVyUbmtEx7wbqFpBq4sGOnIFVScFQQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
+  </head>
+  <body>
+    <input type="file" id="file" name="file" multiple /><br />
+    <div id="result-block"></div>
+    <div id="result"></div>
+  </body>
+  <script>
+    var $result = $("#result");
+    var $resultBlock = $("#result-block");
+    var resultJson = [];
+    $("#file").on("change", function (evt) {
+      // remove content
+      $result.html("");
+      // be sure to show the results
+      $("#result_block").removeClass("hidden").addClass("show");
+
+      // Closure to capture the file information.
+      function handleFile(f) {
+        var $title = $("<h4>", {
+          text: f.name,
+        });
+        var $fileContent = $("<ul>");
+        $resultBlock.append($title);
+        $result.append($fileContent);
+
+        var dateBefore = new Date();
+        var parentName = "";
+        JSZip.loadAsync(f) // 1) read the Blob
+          .then(
+            function (zip) {
+              var dateAfter = new Date();
+              $title.append(
+                $("<span>", {
+                  class: "small",
+                  text: " (loaded in " + (dateAfter - dateBefore) + "ms)",
+                })
+              );
+
+              zip.forEach(function (relativePath, zipEntry) {
+                if (zipEntry.dir) {
+                  parentName = zipEntry.name;
+                }
+
+                if (
+                  parentName !== zipEntry.name &&
+                  parentName &&
+                  zipEntry.name.includes(parentName)
+                ) {
+                  resultJson.push({
+                    parent: parentName,
+                    id: zipEntry.name,
+                    text: zipEntry.name.replace(parentName, ""),
+                  });
+                } else {
+                  resultJson.push({
+                    id: zipEntry.name,
+                    parent: "#",
+                    text: zipEntry.name,
+                  });
+                }
+              });
+              $("#result").jstree({
+                core: {
+                  data: resultJson,
+                },
+              });
+            },
+            function (e) {
+              $result.append(
+                $("<div>", {
+                  class: "alert alert-danger",
+                  text: "Error reading " + f.name + ": " + e.message,
+                })
+              );
+            }
+          );
+      }
+
+      var files = evt.target.files;
+      for (var i = 0; i < files.length; i++) {
+        handleFile(files[i]);
+      }
+    });
+  </script>
+</html>
